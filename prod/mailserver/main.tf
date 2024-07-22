@@ -32,8 +32,7 @@ resource "aws_security_group" "mailserver" {
     from_port = 22
     to_port   = 22
     protocol  = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
-    cidr_blocks = ["76.95.238.167/32"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
