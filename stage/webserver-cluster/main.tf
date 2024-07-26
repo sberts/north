@@ -1,11 +1,31 @@
-variable "server_port" {
-  description = "The port the server will use for HTTP requests"
-  type        = number
-  default     = 8080
+terraform {
+    backend "s3" {
+        bucket = "north-tf-state-usw2"
+        key = "stage/webserver-cluster/terraform.tfstate"
+        region = "us-west-2"
+        dynamodb_table = "north-tf-locks"
+        encrypt = true
+    }
 }
 
 provider "aws" {
   region = "us-west-2"
+}
+
+data "terraform_remote_state" "db" {
+  backend = "s3"
+
+  config = {
+    bucket = "north-tf-state-usw2"
+    key    = "stage/data-stores/mysql/terraform.tfstate"
+    region = "us-west-2"
+  }
+}
+
+variable "server_port" {
+  description = "The port the server will use for HTTP requests"
+  type        = number
+  default     = 8080
 }
 
 data "aws_vpc" "default" {
@@ -50,12 +70,11 @@ resource "aws_launch_configuration" "north" {
   security_groups = [aws_security_group.app.id]
   key_name        = "north-key"
 
-  user_data = <<-EOF
-    #!/bin/bash
-    yum install -y nginx
-    sed -i s/80/${var.server_port}/g /etc/nginx/nginx.conf
-    systemctl start nginx
-    EOF
+  user_data = templatefile("user-data.sh", {
+    server_port = var.server_port
+    db_address = data.terraform_remote_state.db.outputs.address
+    db_port = data.terraform_remote_state.db.outputs.port
+  })
 
   lifecycle {
     create_before_destroy = true
