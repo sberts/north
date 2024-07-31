@@ -1,25 +1,9 @@
-terraform {
-    backend "s3" {
-        bucket = "north-tf-state-usw2"
-        key = "stage/webserver-cluster/terraform.tfstate"
-        region = "us-west-2"
-        dynamodb_table = "north-tf-locks"
-        encrypt = true
-    }
-}
-
-provider "aws" {
-  region = "us-west-2"
-}
-
-data "terraform_remote_state" "db" {
-  backend = "s3"
-
-  config = {
-    bucket = "north-tf-state-usw2"
-    key    = "stage/data-stores/mysql/terraform.tfstate"
-    region = "us-west-2"
-  }
+locals {
+  http_port = 80
+  any_port = 0
+  any_protocol = "-1"
+  tcp_protocol = "tcp"
+  all_ips = ["0.0.0.0/0"]
 }
 
 variable "server_port" {
@@ -39,41 +23,40 @@ data "aws_subnets" "default" {
   }
 }
 
-resource "aws_security_group" "app" {
-  name = "app sg"
+resource "aws_security_group" "asg" {
+  name = "${var.cluster_name}-asg"
+}
 
-  ingress {
-    from_port = var.server_port
-    to_port   = var.server_port
-    protocol  = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group_rule" "allow_http_inbound" {
+  type = "ingress"
+  security_group_id = aws_security_group.asg.id
 
-  ingress {
-    from_port = 22
-    to_port   = 22
-    protocol  = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  from_port = var.server_port
+  to_port   = var.server_port
+  protocol  = local.tcp_protocol
+  cidr_blocks = local.all_ips
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group_rule" "allow_all_outbound" {
+  type = "egress"
+  security_group_id = aws_security_group.asg.id
+
+  from_port   = local.any_port
+  to_port     = local.any_port
+  protocol    = local.any_protocol
+  cidr_blocks = local.all_ips
 }
 
 resource "aws_launch_configuration" "north" {
   image_id        = "ami-05af537b78f07c4f7"
-  instance_type   = "t4g.nano"
-  security_groups = [aws_security_group.app.id]
+  instance_type   = var.instance_type
+  security_groups = [aws_security_group.asg.id]
   key_name        = "north-key"
 
-  user_data = templatefile("user-data.sh", {
+  user_data = templatefile("${path.module}/user-data.sh", {
     server_port = var.server_port
-    db_address = data.terraform_remote_state.db.outputs.address
-    db_port = data.terraform_remote_state.db.outputs.port
+    db_address = var.db_address
+    db_port = var.db_port
   })
 
   lifecycle {
@@ -88,8 +71,8 @@ resource "aws_autoscaling_group" "asg" {
   target_group_arns = [aws_lb_target_group.alb.arn]
   health_check_type = "ELB"
 
-  min_size = 1
-  max_size = 4
+  min_size = var.min_size
+  max_size = var.max_size
 
   tag {
     key  = "Name"
@@ -99,7 +82,7 @@ resource "aws_autoscaling_group" "asg" {
 }
 
 resource "aws_lb" "alb" {
-  name = "north"
+  name = "${var.cluster_name}-lb"
   load_balancer_type = "application"
   subnets = data.aws_subnets.default.ids
   security_groups = [aws_security_group.alb.id]
@@ -107,7 +90,7 @@ resource "aws_lb" "alb" {
 
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.alb.arn
-  port = 80
+  port = local.http_port
   protocol = "HTTP"
 
   default_action {
@@ -122,21 +105,27 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_security_group" "alb" {
-  name = "alb sg"
+  name = "${var.cluster_name}-alb"
+}
 
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group_rule" "alb_allow_inbound_http" {
+  type = "ingress"
+  security_group_id = aws_security_group.alb.id
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  from_port   = local.http_port
+  to_port     = local.http_port
+  protocol    = local.tcp_protocol
+  cidr_blocks = local.all_ips
+}
+
+resource "aws_security_group_rule" "alb_allow_outbound_all" {
+  type = "egress"
+  security_group_id = aws_security_group.alb.id
+
+  from_port   = local.any_port
+  to_port     = local.any_port
+  protocol    = local.any_protocol
+  cidr_blocks = local.all_ips
 }
 
 resource "aws_lb_target_group" "alb" {
@@ -171,7 +160,3 @@ resource "aws_lb_listener_rule" "asg" {
   }
 }
 
-output "alb_dns_name" {
-  value = aws_lb.alb.dns_name
-  description = "the domain name of the load balancer"
-}

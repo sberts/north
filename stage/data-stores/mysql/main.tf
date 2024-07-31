@@ -1,25 +1,18 @@
 terraform {
     backend "s3" {
         bucket = "north-tf-state-usw2"
-        key = "stage/data-stores/mysql/terraform.tfstate"
+        key = "stage/mysql/terraform.tfstate"
         region = "us-west-2"
         dynamodb_table = "north-tf-locks"
         encrypt = true
     }
 }
 
-provider "aws" {
-    region = "us-west-2"
-}
+module "mysql" {
+    source = "../../../modules/data-stores/mysql"
 
-resource "aws_db_instance" "north" {
-    identifier_prefix = "north"
-    engine = "mysql"
-    allocated_storage = 10
-    instance_class = "db.t3.micro"
-    skip_final_snapshot = true
-    db_name = "north"
-
-    username = var.db_username
-    password = var.db_password
+    db_name = "mysql_stage"
+    db_username = var.db_username
+    db_password = var.db_password
+    instance_type = "db.t3.micro"
 }
