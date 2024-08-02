@@ -160,3 +160,26 @@ resource "aws_lb_listener_rule" "asg" {
   }
 }
 
+resource "aws_autoscaling_schedule" "scale_out_during_business-hours" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  scheduled_action_name = "${var.cluster_name}-scale-out-during-business-hours"
+  min_size = 1
+  max_size = 2
+  desired_capacity = 1
+  recurrence = "0 9 * * *"
+
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+}
+
+resource "aws_autoscaling_schedule" "scale_in_at_night" {
+  count = var.enable_autoscaling ? 1 : 0
+
+  scheduled_action_name = "${var.cluster_name}-scale-in-at-night"
+  min_size = 0
+  max_size = 2
+  desired_capacity = 0
+  recurrence = "0 17 * * *"
+
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+}

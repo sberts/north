@@ -8,6 +8,20 @@ terraform {
     }
 }
 
+provider "aws" {
+    region = "us-west-2"
+
+    default_tags {
+        tags = {
+            Project = "north"
+            Module = "mysql"
+            ManagedBy = "terraform"
+            Environment = "stage"            
+        }
+    }
+}
+
+
 module "mysql" {
     source = "../../../modules/data-stores/mysql"
 

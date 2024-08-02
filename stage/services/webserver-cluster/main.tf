@@ -10,6 +10,15 @@ terraform {
 
 provider "aws" {
     region = "us-west-2"
+
+    default_tags {
+        tags = {
+            Project = "north"
+            Module = "webserver-cluster"
+            ManagedBy = "terraform"
+            Environment = "stage"            
+        }
+    }
 }
 
 data "terraform_remote_state" "db" {
@@ -32,6 +41,7 @@ module "webserver_cluster" {
     max_size = 2
     db_address = data.terraform_remote_state.db.outputs.address
     db_port = data.terraform_remote_state.db.outputs.port
+    enable_autoscaling = false
 }
 
 resource "aws_security_group_rule" "allow_inbound_ssh" {

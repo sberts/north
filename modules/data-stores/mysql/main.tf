@@ -1,8 +1,3 @@
-
-provider "aws" {
-    region = "us-west-2"
-}
-
 resource "aws_db_instance" "north" {
     engine = "mysql"
     allocated_storage = 10
