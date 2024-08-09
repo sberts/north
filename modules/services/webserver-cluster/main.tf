@@ -12,6 +12,16 @@ variable "server_port" {
   default     = 8080
 }
 
+data "terraform_remote_state" "db" {
+  backend = "s3"
+
+  config = {
+    bucket = var.db_remote_state_bucket
+    key    = var.db_remote_state_key
+    region = "us-west-2"
+  }
+}
+
 data "aws_vpc" "default" {
   default = true
 }
@@ -48,15 +58,16 @@ resource "aws_security_group_rule" "allow_all_outbound" {
 }
 
 resource "aws_launch_configuration" "north" {
-  image_id        = "ami-05af537b78f07c4f7"
+  image_id        = var.ami
   instance_type   = var.instance_type
   security_groups = [aws_security_group.asg.id]
   key_name        = "north-key"
 
   user_data = templatefile("${path.module}/user-data.sh", {
     server_port = var.server_port
-    db_address = var.db_address
-    db_port = var.db_port
+    db_address  = data.terraform_remote_state.db.outputs.address
+    db_port     = data.terraform_remote_state.db.outputs.port
+    server_text = var.server_text
   })
 
   lifecycle {
@@ -65,6 +76,8 @@ resource "aws_launch_configuration" "north" {
 }
 
 resource "aws_autoscaling_group" "asg" {
+  name = var.cluster_name
+
   launch_configuration = aws_launch_configuration.north.name
   vpc_zone_identifier = data.aws_subnets.default.ids
 
@@ -78,6 +91,13 @@ resource "aws_autoscaling_group" "asg" {
     key  = "Name"
     value = "north"
     propagate_at_launch = true
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 50
+    }
   }
 }
 

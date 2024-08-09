@@ -21,26 +21,30 @@ provider "aws" {
     }
 }
 
-data "terraform_remote_state" "db" {
-  backend = "s3"
+variable "db_remote_state_bucket" {
+  description = "The name of the S3 bucket used for the database's remote state storage"
+  type        = string
+  default = "north-tf-state-usw2"
+}
 
-  config = {
-    bucket = "north-tf-state-usw2"
-    key    = "stage/mysql/terraform.tfstate"
-    region = "us-west-2"
-  }
+variable "db_remote_state_key" {
+  description = "The name of the key in the S3 bucket used for the database's remote state storage"
+  type        = string
+  default = "stage/mysql/terraform.tfstate"
 }
 
 module "webserver_cluster" {
     source = "../../../modules/services/webserver-cluster"
 
     cluster_name = "webservers-stage"
-
+    server_text = "server text"
     instance_type = "t4g.nano"
     min_size = 1
     max_size = 2
-    db_address = data.terraform_remote_state.db.outputs.address
-    db_port = data.terraform_remote_state.db.outputs.port
+
+    db_remote_state_bucket = var.db_remote_state_bucket
+    db_remote_state_key    = var.db_remote_state_key
+
     enable_autoscaling = false
 }
 
