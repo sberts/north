@@ -3,14 +3,10 @@ variable "db_name" {
     type = string
 }
 
-variable "db_username" {
-    description = "database username"
-    type = string
-}
-
-variable "db_password" {
-    description = "database password"
-    type = string
+variable "db_secret" {
+    description = "The name of the secret that has the db admin username/password"
+    type        = string
+    default     = "north-db-password"
 }
 
 variable "instance_type" {
