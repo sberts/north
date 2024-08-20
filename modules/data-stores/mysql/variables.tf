@@ -3,10 +3,10 @@ variable "db_name" {
     type = string
 }
 
-variable "db_secret" {
-    description = "The name of the secret that has the db admin username/password"
+variable "db_username" {
+    description = "The rds admin username"
     type        = string
-    default     = "north-db-password"
+    default     = "admin"
 }
 
 variable "instance_type" {
