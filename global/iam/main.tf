@@ -87,4 +87,3 @@ output "role_arn" {
     value = aws_iam_role.terraform.arn
     description = "role for github actions"
 }
-
