@@ -1,5 +1,6 @@
 permissions:
   id-token: write
+  contents: read
 name: Terraform Apply
 on:
   push:
@@ -12,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::965778215583:role/terraform20240822004626294300000001
           aws-region: us-west-2
