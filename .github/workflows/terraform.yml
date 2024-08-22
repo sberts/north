@@ -27,3 +27,4 @@ jobs:
           terraform init
           terraform apply -auto-approve
         working-directory: stage/data-stores/mysql
+
