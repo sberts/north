@@ -35,7 +35,7 @@ resource "aws_iam_role" "terraform" {
 data "aws_iam_policy_document" "admin_permissions" {
     statement {
         effect = "Allow"
-        actions = [ "ec2:*", "rds:*", "s3:*", "dynamodb:*" ]
+        actions = [ "ec2:*", "rds:*", "s3:*", "dynamodb:*", "kms:*", "iam:*" ]
         resources = [ "*" ]
     }
 }
