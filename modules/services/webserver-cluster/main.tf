@@ -1,5 +1,6 @@
 locals {
   http_port = 80
+  db_port = 3306
   any_port = 0
   any_protocol = "-1"
   tcp_protocol = "tcp"
@@ -12,29 +13,29 @@ variable "server_port" {
   default     = 8080
 }
 
+data "terraform_remote_state" "vpc" {
+  backend = "s3"
+
+  config = {
+    bucket = var.remote_state_bucket
+    key    = var.vpc_remote_state_key
+    region = "us-west-2"
+  }
+}
+
 data "terraform_remote_state" "db" {
   backend = "s3"
 
   config = {
-    bucket = var.db_remote_state_bucket
+    bucket = var.remote_state_bucket
     key    = var.db_remote_state_key
     region = "us-west-2"
   }
 }
 
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
 resource "aws_security_group" "asg" {
   name = "${var.cluster_name}-asg"
+  vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
 }
 
 resource "aws_security_group_rule" "allow_http_inbound" {
@@ -56,6 +57,17 @@ resource "aws_security_group_rule" "allow_all_outbound" {
   protocol    = local.any_protocol
   cidr_blocks = local.all_ips
 }
+
+resource "aws_security_group_rule" "db_allow_inbound_mysql" {
+  type = "ingress"
+  security_group_id = data.terraform_remote_state.db.outputs.sg_id
+
+  from_port   = local.db_port
+  to_port     = local.db_port
+  protocol    = local.tcp_protocol
+  source_security_group_id = aws_security_group.asg.id
+}
+
 
 resource "aws_launch_configuration" "north" {
   image_id        = var.ami
@@ -79,7 +91,7 @@ resource "aws_autoscaling_group" "asg" {
   name = var.cluster_name
 
   launch_configuration = aws_launch_configuration.north.name
-  vpc_zone_identifier = data.aws_subnets.default.ids
+  vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.app_subnet_ids
 
   target_group_arns = [aws_lb_target_group.alb.arn]
   health_check_type = "ELB"
@@ -104,7 +116,7 @@ resource "aws_autoscaling_group" "asg" {
 resource "aws_lb" "alb" {
   name = "${var.cluster_name}-lb"
   load_balancer_type = "application"
-  subnets = data.aws_subnets.default.ids
+  subnets = data.terraform_remote_state.vpc.outputs.public_subnet_ids
   security_groups = [aws_security_group.alb.id]
 }
 
@@ -126,6 +138,7 @@ resource "aws_lb_listener" "http" {
 
 resource "aws_security_group" "alb" {
   name = "${var.cluster_name}-alb"
+  vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
 }
 
 resource "aws_security_group_rule" "alb_allow_inbound_http" {
@@ -152,7 +165,7 @@ resource "aws_lb_target_group" "alb" {
   name = "alb"
   port = var.server_port
   protocol = "HTTP"
-  vpc_id = data.aws_vpc.default.id
+  vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
 
   health_check {
     path = "/"
