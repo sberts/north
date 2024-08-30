@@ -7,3 +7,8 @@ output "port" {
     value = module.mysql.port
     description = "The port the database is listening on"
 }
+
+output "sg_id" {
+    value = module.mysql.sg_id
+    description = "The db secgroup id"
+}

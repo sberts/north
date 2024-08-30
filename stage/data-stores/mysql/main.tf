@@ -27,4 +27,7 @@ module "mysql" {
 
     db_name = "mysql_stage"
     instance_type = "db.t3.micro"
+    vpc_remote_state_bucket = var.vpc_remote_state_bucket
+    vpc_remote_state_key    = var.vpc_remote_state_key
 }
+
