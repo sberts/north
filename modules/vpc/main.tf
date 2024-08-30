@@ -98,3 +98,28 @@ resource "aws_route_table_association" "db" {
   subnet_id      = element(aws_subnet.db.*.id, count.index)
   route_table_id = aws_route_table.private.id
 }
+
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-west-2.ssm"
+  vpc_endpoint_type = "Interface"
+  subnet_ids        = aws_subnet.app[*].id
+
+  private_dns_enabled = true
+
+  tags = {
+    Name = "ssm-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.us-west-2.s3"
+  vpc_endpoint_type = "Gateway"
+  
+  route_table_ids = [ aws_route_table.private.id ]
+
+  tags = {
+    Name = "s3-endpoint"
+  }
+}
