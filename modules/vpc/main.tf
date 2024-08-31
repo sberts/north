@@ -123,3 +123,27 @@ resource "aws_vpc_endpoint" "s3" {
     Name = "s3-endpoint"
   }
 }
+
+resource "aws_vpc_endpoint" "ec2messages" {
+  vpc_id       = aws_vpc.main.id
+  subnet_ids        = aws_subnet.app[*].id
+  service_name      = "com.amazonaws.us-west-2.ec2messages"
+  vpc_endpoint_type = "Interface"
+
+  private_dns_enabled = true
+  tags = {
+    Name = "ec2messages-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ssmmessages" {
+  vpc_id       = aws_vpc.main.id
+  subnet_ids        = aws_subnet.app[*].id
+  service_name      = "com.amazonaws.us-west-2.ssmmessages"
+  vpc_endpoint_type = "Interface"
+
+  private_dns_enabled = true
+  tags = {
+    Name = "ssmmessages-endpoint"
+  }
+}
