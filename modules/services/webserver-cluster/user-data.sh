@@ -9,3 +9,4 @@ cat > /usr/share/nginx/html/index.html << EOF
 EOF
 
 systemctl start nginx
+systemctl enable nginx

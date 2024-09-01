@@ -1,5 +1,7 @@
 locals {
   http_port = 80
+  https_port = 443
+  ssh_port = 22
   db_port = 3306
   any_port = 0
   any_protocol = "-1"
@@ -45,16 +47,16 @@ resource "aws_security_group_rule" "allow_http_inbound" {
   from_port = var.server_port
   to_port   = var.server_port
   protocol  = local.tcp_protocol
-  cidr_blocks = local.all_ips
+  source_security_group_id = aws_security_group.alb.id
 }
 
-resource "aws_security_group_rule" "allow_all_outbound" {
+resource "aws_security_group_rule" "allow_https_outbound" {
   type = "egress"
   security_group_id = aws_security_group.asg.id
 
-  from_port   = local.any_port
-  to_port     = local.any_port
-  protocol    = local.any_protocol
+  from_port   = local.https_port
+  to_port     = local.https_port
+  protocol    = local.tcp_protocol
   cidr_blocks = local.all_ips
 }
 
@@ -68,19 +70,52 @@ resource "aws_security_group_rule" "db_allow_inbound_mysql" {
   source_security_group_id = aws_security_group.asg.id
 }
 
+resource "aws_iam_role" "ssm_role" {
+  name = "ssm-role"
 
-resource "aws_launch_configuration" "north" {
-  image_id        = var.ami
-  instance_type   = var.instance_type
-  security_groups = [aws_security_group.asg.id]
-  key_name        = "north-key"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+      },
+    ],
+  })
+}
 
-  user_data = templatefile("${path.module}/user-data.sh", {
+resource "aws_iam_role_policy_attachment" "ssm_attach" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm_instance_profile" {
+  name = "ssm-instance-profile"
+  role = aws_iam_role.ssm_role.name
+}
+
+resource "aws_launch_template" "north" {
+  name_prefix   = "north-"
+  image_id      = var.ami
+  instance_type = var.instance_type
+  update_default_version = true
+
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ssm_instance_profile.name
+  }
+
+  vpc_security_group_ids = [aws_security_group.asg.id]
+
+  user_data = base64encode(templatefile("${path.module}/user-data.sh", {
     server_port = var.server_port
     db_address  = data.terraform_remote_state.db.outputs.address
     db_port     = data.terraform_remote_state.db.outputs.port
     server_text = var.server_text
-  })
+  }))
 
   lifecycle {
     create_before_destroy = true
@@ -90,7 +125,11 @@ resource "aws_launch_configuration" "north" {
 resource "aws_autoscaling_group" "asg" {
   name = var.cluster_name
 
-  launch_configuration = aws_launch_configuration.north.name
+  launch_template {
+    id      = aws_launch_template.north.id
+    version = "$Latest"
+  }
+
   vpc_zone_identifier = data.terraform_remote_state.vpc.outputs.app_subnet_ids
 
   target_group_arns = [aws_lb_target_group.alb.arn]

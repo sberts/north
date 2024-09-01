@@ -3,11 +3,6 @@ variable "cluster_name" {
     type = string
 }
 
-variable "instance_type" {
-    description = "The type of EC2 Instance to run (e.g. t2.micro)"
-    type = string
-}
-
 variable "min_size" {
     description = "The minimum number of EC2 Instances in the ASG"
     type = number
@@ -23,10 +18,16 @@ variable "enable_autoscaling" {
   type = bool
 }
 
+variable "instance_type" {
+    description = "The type of EC2 Instance to run (e.g. t2.micro)"
+    type = string
+    default = "t2.micro"
+}
+
 variable "ami" {
   description = "the ami to run in the cluster"
   type = string
-  default = "ami-05af537b78f07c4f7"
+  default = "ami-02d3770deb1c746ec"
 }
 
 variable "server_text" {
