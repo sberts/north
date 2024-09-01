@@ -3,11 +3,10 @@ locals {
   app_subnets    = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k)]
   public_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 4)]
   db_subnets     = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 8)]
-  https_port = 80
-  tcp_protocol = "tcp"
-  any_port = 0
-  any_protocol = "-1"
-
+  https_port     = 443
+  tcp_protocol   = "tcp"
+  any_port       = 0
+  any_protocol   = "-1"
   all_ips = ["0.0.0.0/0"]
 }
 
