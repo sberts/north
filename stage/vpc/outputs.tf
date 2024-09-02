@@ -8,12 +8,12 @@ output "public_subnet_ids" {
     description = "public subnet ids"
 }
 
-output "app_subnet_ids" {
-    value = module.vpc.app_subnet_ids
-    description = "app subnet ids"
+output "private_subnet_ids" {
+    value = module.vpc.private_subnet_ids
+    description = "private subnet ids"
 }
 
-output "db_subnet_ids" {
-    value = module.vpc.db_subnet_ids
-    description = "db subnet ids"
+output "database_subnet_ids" {
+    value = module.vpc.database_subnet_ids
+    description = "database subnet ids"
 }
