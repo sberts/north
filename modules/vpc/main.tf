@@ -340,3 +340,29 @@ resource "aws_vpc_endpoint" "ssmmessages" {
     Name = "ssmmessages-endpoint"
   }
 }
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id       = aws_vpc.this.id
+  subnet_ids        = aws_subnet.private[*].id
+  service_name      = "com.amazonaws.us-west-2.ecr.api"
+  vpc_endpoint_type = "Interface"
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+  tags = {
+    Name = "ecr-api-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id       = aws_vpc.this.id
+  subnet_ids        = aws_subnet.private[*].id
+  service_name      = "com.amazonaws.us-west-2.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  security_group_ids = [aws_security_group.vpc_endpoint.id]
+
+  private_dns_enabled = true
+  tags = {
+    Name = "ecr-dkr-endpoint"
+  }
+}
